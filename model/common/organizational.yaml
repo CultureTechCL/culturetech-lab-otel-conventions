@@ -1,0 +1,65 @@
+# =============================================================================
+# Dominio: common (organizacional)
+# =============================================================================
+# Atributos transversales que describen la propiedad organizacional y la
+# clasificación de datos de cualquier señal de telemetría del ecosistema.
+#
+# Convenciones (obligatorias, verificadas por policies/ct_naming.rego):
+#   - El `id` del grupo comienza con `registry.ct.<dominio>` -> aquí `registry.ct.common`.
+#   - El `id` de cada atributo comienza con el prefijo `ct.`.
+#   - `stability: development` mientras el contrato esté en v0.x.
+#
+# PUNTO DE EXTENSIÓN (registro jerárquico):
+#   Esta carpeta es autocontenida. Para extraer `common` a su propio registro,
+#   muévela con su propio `registry_manifest.yaml` y decláralo como dependencia
+#   en el manifiesto padre. Nada aquí asume convivir en un registro plano.
+# =============================================================================
+groups:
+  - id: registry.ct.common
+    type: attribute_group
+    brief: >-
+      Atributos organizacionales transversales: propiedad de equipo, centro de
+      costo y nivel de cumplimiento. Aplicables a cualquier señal del ecosistema.
+    attributes:
+      - id: ct.team
+        type: string
+        stability: development
+        brief: >-
+          Identificador del equipo (squad) dueño del servicio o de la operación
+          que emite la telemetría.
+        examples: ["payments-core", "fulfillment-ops", "platform"]
+
+      - id: ct.cost_center
+        type: string
+        stability: development
+        brief: >-
+          Centro de costo al que se imputa el consumo de infraestructura y la
+          operación del servicio. Habilita correlación costo/telemetría.
+        examples: ["CC-1001", "CC-2044"]
+
+      # Conjunto CERRADO -> se modela como enum con `members`.
+      - id: ct.compliance_level
+        stability: development
+        brief: >-
+          Nivel de clasificación de cumplimiento/sensibilidad de los datos que
+          maneja la operación. Controla políticas de retención y enmascarado.
+        type:
+          members:
+            - id: public
+              value: "public"
+              brief: Información pública, sin restricciones de divulgación.
+              stability: development
+            - id: internal
+              value: "internal"
+              brief: Uso interno de la organización.
+              stability: development
+            - id: confidential
+              value: "confidential"
+              brief: Información confidencial; acceso restringido por necesidad.
+              stability: development
+            - id: restricted
+              value: "restricted"
+              brief: >-
+                Información altamente restringida (p. ej. datos regulados);
+                máximo control de acceso y auditoría.
+              stability: development

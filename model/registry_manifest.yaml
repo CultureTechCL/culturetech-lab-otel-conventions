@@ -1,0 +1,68 @@
+# =============================================================================
+# Manifiesto del registro de convenciones semánticas de CultureTech
+# =============================================================================
+#
+# Este archivo es la raíz del "registro" para OpenTelemetry Weaver. Declara la
+# identidad del contrato de telemetría central del lab y su dependencia del
+# registro oficial de OpenTelemetry.
+#
+# NOTA DE UBICACIÓN (adaptación validada contra Weaver 0.24.2):
+#   El manifiesto vive DENTRO de `model/`, no en la raíz del repositorio. Weaver
+#   trata como "raíz del registro" al directorio que se pasa por `--registry` y
+#   escanea recursivamente TODOS los `*.yaml` que cuelgan de él como archivos de
+#   modelo semántico. Si el manifiesto estuviera en la raíz del repo, tendríamos
+#   que apuntar `--registry .`, y Weaver intentaría interpretar los `weaver.yaml`
+#   de `templates/` como archivos semconv (y fallaría). Manteniendo el registro
+#   autocontenido en `model/`, el comando canónico `--registry model/` funciona y
+#   `templates/`, `policies/`, `docs/` quedan fuera del escaneo. Ver README §
+#   "Estructura" y CLAUDE.md § "Decisiones de arranque".
+#
+# PUNTO DE EXTENSIÓN (evolución a registro jerárquico):
+#   Hoy `model/` es un único registro plano con carpetas por dominio. Weaver
+#   soporta hasta 10 niveles de registros anidados con dependencias entre sí.
+#   Para extraer un dominio a su propio registro basta con mover su carpeta a un
+#   repo/registro nuevo, darle SU PROPIO `registry_manifest.yaml`, y declararlo
+#   aquí como una entrada más de `dependencies:`. Ningún consumidor ni template
+#   asume "registro único plano". Ver README § "Evolución a registro jerárquico".
+# =============================================================================
+
+# `name` es documental para humanos. Weaver deriva el nombre efectivo del
+# registro desde `schema_url` (todo el path salvo el último segmento de versión).
+name: culturetech
+
+description: >-
+  Contrato central de telemetría del laboratorio CultureTech. Define las
+  convenciones semánticas `ct.*` (atributos y métricas) que consumen de forma
+  gobernada y consistente todos los servicios del lab, en múltiples lenguajes.
+
+# `semconv_version` es documental. La versión efectiva se deriva del último
+# segmento de `schema_url` (aquí, `0.1.0`).
+semconv_version: 0.1.0
+
+# `schema_url` es el campo canónico en Weaver 0.24.2 (reemplaza a la pareja
+# obsoleta `schema_base_url` + `semconv_version`). Identifica de forma única al
+# registro y su versión. El último segmento del path (`0.1.0`) ES la versión.
+schema_url: https://schemas.culturetech.cl/lab-otel/0.1.0
+
+# ---------------------------------------------------------------------------
+# Dependencias del registro.
+# ---------------------------------------------------------------------------
+# Weaver 0.24.2 soporta (por ahora) cero o una dependencia. Declaramos el
+# registro oficial de OpenTelemetry semantic-conventions v1.40.0, subcarpeta
+# `model`. Esto permite que los dominios de CultureTech referencien (`ref:`)
+# atributos estándar de OTel (p. ej. `error.type`) sin redefinirlos.
+#
+#   - `schema_url`   : identidad de la dependencia (URL canónica del schema OTel).
+#   - `registry_path`: de dónde se obtiene el registro. Usamos la URL de ARCHIVO
+#                      del tag (`.../archive/refs/tags/v1.40.0.zip[model]`) en vez
+#                      de la forma git `@v1.40.0`, porque el archivo fija la
+#                      versión de forma 100% reproducible (la forma git con
+#                      `@refspec` no está completamente implementada en Weaver y
+#                      podría resolver a la rama por defecto). `[model]` selecciona
+#                      la subcarpeta del registro dentro del archivo.
+#
+# PUNTO DE EXTENSIÓN: para pasar a jerarquía multinivel, agrega aquí dependencias
+# adicionales apuntando a los registros de dominio extraídos.
+dependencies:
+  - schema_url: https://opentelemetry.io/schemas/1.40.0
+    registry_path: https://github.com/open-telemetry/semantic-conventions/archive/refs/tags/v1.40.0.zip[model]

@@ -1,0 +1,34 @@
+# =============================================================================
+# Dominio: orders
+# =============================================================================
+# Atributos que describen una orden de compra dentro del ecosistema.
+#
+# PUNTO DE EXTENSIÓN (registro jerárquico): carpeta autocontenida; extraíble a
+# su propio registro sin reescritura (ver README § "Evolución a registro
+# jerárquico").
+# =============================================================================
+groups:
+  - id: registry.ct.order
+    type: attribute_group
+    brief: Atributos que describen una orden de compra.
+    attributes:
+      - id: ct.order.id
+        type: string
+        stability: development
+        brief: Identificador único de la orden.
+        examples: ["ord_01HX9ZQ5", "ord_7f3a9c22"]
+
+      - id: ct.order.total
+        type: double
+        stability: development
+        brief: >-
+          Monto total de la orden, expresado en la unidad menor o mayor según la
+          moneda de la transacción (el contrato no fija la moneda; se acompaña de
+          los atributos monetarios estándar de OTel cuando aplica).
+        examples: [19990.0, 4500.5]
+
+      - id: ct.order.items_count
+        type: int
+        stability: development
+        brief: Cantidad de líneas (ítems distintos) contenidas en la orden.
+        examples: [1, 3, 12]

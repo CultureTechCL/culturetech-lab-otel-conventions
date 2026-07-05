@@ -1,0 +1,18 @@
+# Configuración de template (Weaver Forge) para el target `go`.
+#
+# `filter` selecciona SOLO los grupos propios de CultureTech (id que empieza con
+# `registry.ct.`), dejando fuera los grupos importados de OTel. `application_mode:
+# single` produce UN archivo con todas las clases/bloques.
+#
+# PUNTO DE EXTENSIÓN (registro jerárquico): el filtro se basa en el prefijo de id
+# `registry.ct.`, NO en un supuesto de "registro plano". Si mañana los dominios
+# viven en registros anidados, el mismo filtro sigue capturándolos.
+whitespace_control:
+  trim_blocks: true
+  lstrip_blocks: true
+
+templates:
+  - template: attributes.go.j2
+    filter: '.groups | map(select(.id | startswith("registry.ct.")))'
+    application_mode: single
+    file_name: "attributes.go"

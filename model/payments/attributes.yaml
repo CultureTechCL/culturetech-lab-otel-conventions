@@ -1,0 +1,49 @@
+# =============================================================================
+# Dominio: payments (atributos)
+# =============================================================================
+# Atributos que describen una transacción de pago. Las MÉTRICAS del dominio
+# viven en `metrics.yaml` (mismo dominio, archivo separado por tipo de señal).
+#
+# PUNTO DE EXTENSIÓN (registro jerárquico): carpeta autocontenida; extraíble a
+# su propio registro. Nótese que `metrics.yaml` referencia estos atributos por
+# `ref:`; al extraer el dominio ambos archivos viajan juntos.
+# =============================================================================
+groups:
+  - id: registry.ct.payment
+    type: attribute_group
+    brief: Atributos que describen una transacción de pago.
+    attributes:
+      # Conjunto CERRADO -> enum con `members`.
+      - id: ct.payment.method
+        stability: development
+        brief: Método de pago utilizado en la transacción.
+        type:
+          members:
+            - id: credit_card
+              value: "credit_card"
+              brief: Tarjeta de crédito.
+              stability: development
+            - id: debit_card
+              value: "debit_card"
+              brief: Tarjeta de débito.
+              stability: development
+            - id: bank_transfer
+              value: "bank_transfer"
+              brief: Transferencia bancaria.
+              stability: development
+            - id: cash
+              value: "cash"
+              brief: Efectivo (p. ej. pago contra entrega).
+              stability: development
+            - id: digital_wallet
+              value: "digital_wallet"
+              brief: Billetera digital (p. ej. wallet de terceros).
+              stability: development
+
+      - id: ct.payment.transaction_id
+        type: string
+        stability: development
+        brief: >-
+          Identificador único de la transacción de pago asignado por el motor de
+          pagos. NO debe contener PAN ni datos de tarjeta.
+        examples: ["txn_01HX9ZR7", "txn_9a1b2c3d"]

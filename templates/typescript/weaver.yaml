@@ -1,0 +1,15 @@
+# Configuración de template (Weaver Forge) para el target `typescript`.
+# Ver comentarios equivalentes en templates/go/weaver.yaml.
+#
+# NOTA: este es el template ITERATIVO. TypeScript combina objetos `as const` con
+# tipos derivados (`typeof ...[keyof typeof ...]`); ajusta este archivo y el .j2
+# si necesitas otra forma idiomática (enums nativos, namespaces, etc.).
+whitespace_control:
+  trim_blocks: true
+  lstrip_blocks: true
+
+templates:
+  - template: attributes.ts.j2
+    filter: '.groups | map(select(.id | startswith("registry.ct.")))'
+    application_mode: single
+    file_name: "attributes.ts"

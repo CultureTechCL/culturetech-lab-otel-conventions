@@ -1,0 +1,11 @@
+# Configuración de template (Weaver Forge) para el target `java`.
+# Ver comentarios equivalentes en templates/go/weaver.yaml.
+whitespace_control:
+  trim_blocks: true
+  lstrip_blocks: true
+
+templates:
+  - template: Attributes.java.j2
+    filter: '.groups | map(select(.id | startswith("registry.ct.")))'
+    application_mode: single
+    file_name: "CtAttributes.java"

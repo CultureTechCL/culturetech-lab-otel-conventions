@@ -1,0 +1,54 @@
+# =============================================================================
+# Dominio: payments (métricas)
+# =============================================================================
+# Instrumentos de métrica del dominio de pagos. En el formato de Weaver una
+# métrica es un grupo `type: metric` con `metric_name`, `instrument` y `unit`,
+# que REFERENCIA atributos por `ref:` (no los define).
+#
+# CONSUMO GOBERNADO DE OTEL:
+#   `ct.payment.processed` referencia `error.type`, un atributo ESTÁNDAR de
+#   OpenTelemetry, resuelto vía la dependencia declarada en
+#   `registry_manifest.yaml`. Así el contrato de CultureTech reutiliza el
+#   estándar en vez de redefinirlo -> exactamente el patrón que el lab busca
+#   demostrar a escala organizacional.
+#
+# NOTA DE POLICY:
+#   Los grupos de métrica usan el prefijo de id `metric.ct.*` (no `registry.ct.*`),
+#   por lo que `policies/ct_naming.rego` (que solo exige prefijo `ct.` a los
+#   ATRIBUTOS de grupos `registry.ct.*`) no los evalúa. El `metric_name` sí sigue
+#   la convención `ct.*` por consistencia del contrato.
+#
+# PUNTO DE EXTENSIÓN (registro jerárquico): al extraer el dominio `payments` a su
+# propio registro, este archivo viaja junto a `attributes.yaml`; la dependencia
+# de OTel se re-declara en el manifiesto del nuevo registro.
+# =============================================================================
+groups:
+  - id: metric.ct.payment.processed
+    type: metric
+    metric_name: ct.payment.processed
+    stability: development
+    brief: >-
+      Número de pagos procesados. Se incrementa una vez por intento de pago
+      resuelto (exitoso o fallido); usar `error.type` para segmentar fallos.
+    instrument: counter
+    unit: "{payment}"
+    attributes:
+      - ref: ct.payment.method
+        requirement_level: recommended
+      # Atributo estándar de OpenTelemetry, provisto por la dependencia OTel.
+      - ref: error.type
+        requirement_level:
+          conditionally_required: si el pago falló.
+
+  - id: metric.ct.payment.duration
+    type: metric
+    metric_name: ct.payment.duration
+    stability: development
+    brief: >-
+      Distribución de la latencia de procesamiento de pagos, de extremo a extremo
+      dentro del motor de pagos.
+    instrument: histogram
+    unit: "s"
+    attributes:
+      - ref: ct.payment.method
+        requirement_level: recommended

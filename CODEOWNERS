@@ -1,0 +1,31 @@
+# =============================================================================
+# CODEOWNERS — propiedad federada del contrato de telemetría
+# =============================================================================
+# Modelo: cada DOMINIO es propiedad de su squad, y el equipo de PLATAFORMA es
+# co-owner de TODO el registro (gobernanza transversal del contrato). Así, un
+# cambio a un dominio requiere aprobación del squad dueño Y de plataforma.
+#
+# NOTA: nombres de placeholder (es un laboratorio). Reemplazar por los equipos
+# reales de la organización GitHub CultureTechCL cuando existan.
+#
+# PUNTO DE EXTENSIÓN (registro jerárquico): al extraer un dominio a su propio
+# registro/repo, su bloque de owners viaja con él a ese repo; el owner de
+# plataforma se mantiene como gobernanza transversal.
+# =============================================================================
+
+# --- Gobernanza transversal: plataforma es co-owner de todo ---
+*                               @CultureTechCL/platform-observability
+
+# Infra del registro y contrato (manifiesto, policies, templates, docs)
+/model/registry_manifest.yaml   @CultureTechCL/platform-observability
+/policies/                      @CultureTechCL/platform-observability
+/templates/                     @CultureTechCL/platform-observability
+/CLAUDE.md                      @CultureTechCL/platform-observability
+/README.md                      @CultureTechCL/platform-observability
+
+# --- Federación por dominio (squad dueño + plataforma vía la regla `*`) ---
+/model/common/                  @CultureTechCL/platform-observability
+/model/orders/                  @CultureTechCL/squad-orders          @CultureTechCL/platform-observability
+/model/payments/                @CultureTechCL/squad-payments        @CultureTechCL/platform-observability
+/model/fulfillment/             @CultureTechCL/squad-fulfillment     @CultureTechCL/platform-observability
+/model/shipping/                @CultureTechCL/squad-shipping        @CultureTechCL/platform-observability

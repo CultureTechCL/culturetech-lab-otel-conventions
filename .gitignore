@@ -1,0 +1,21 @@
+# Cache local de Weaver (dependencias resueltas)
+.weaver/
+vdir_cache/
+
+# Artefactos de verificación de compilación
+*.class
+/tmp/
+
+# OS / editor
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# NOTA: `gen/` SÍ se versiona en este lab (salida generada, para revisión).
+# Si en el futuro se prefiere no versionar la salida, descomentar:
+# gen/
+
+# Python bytecode
+__pycache__/
+*.pyc

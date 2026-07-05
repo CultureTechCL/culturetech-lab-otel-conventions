@@ -1,0 +1,26 @@
+# =============================================================================
+# Dominio: fulfillment
+# =============================================================================
+# Atributos que describen la preparación y reserva de inventario de una orden.
+#
+# PUNTO DE EXTENSIÓN (registro jerárquico): carpeta autocontenida; extraíble a
+# su propio registro sin reescritura.
+# =============================================================================
+groups:
+  - id: registry.ct.fulfillment
+    type: attribute_group
+    brief: Atributos de preparación de pedidos y reserva de inventario.
+    attributes:
+      - id: ct.fulfillment.warehouse_id
+        type: string
+        stability: development
+        brief: Identificador de la bodega/centro de distribución que atiende la orden.
+        examples: ["wh-scl-01", "wh-antof-02"]
+
+      - id: ct.fulfillment.stock_reserved
+        type: boolean
+        stability: development
+        brief: >-
+          Indica si el stock necesario para la orden quedó efectivamente
+          reservado en la bodega.
+        examples: [true, false]
