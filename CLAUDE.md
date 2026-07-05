@@ -93,12 +93,24 @@ Requiere `weaver` (OpenTelemetry Weaver) ≥ 0.24.2 en el PATH.
 # Validar el registro + policies (debe salir en verde, exit 0)
 weaver registry check --registry model/ --policy policies/
 
-# Generar las constantes de un lenguaje
-weaver registry generate --registry model/ --templates templates/ go         gen/go
-weaver registry generate --registry model/ --templates templates/ python     gen/python
-weaver registry generate --registry model/ --templates templates/ java       gen/java
-weaver registry generate --registry model/ --templates templates/ typescript gen/typescript
+# Generar las constantes de los 4 lenguajes en sus paquetes (idempotente)
+./scripts/generate.sh
 ```
+
+## Empaquetado y publicación (Fase 1b)
+
+- La salida generada vive en ubicaciones canónicas de paquete: `otel/ctattributes/`,
+  `packages/typescript/src/`, `packages/java/src/main/java/...`, `packages/python/src/...`.
+- **CI** (`.github/workflows/ci.yml`): en push/PR corre `weaver check`, regenera, verifica
+  compilación de los 4 y hace **detección de drift** (`git diff --exit-code` sobre la salida
+  generada). Runner GitHub-hosted `ubuntu-latest`.
+- **Release** (`.github/workflows/release.yml`): al empujar un tag `vX.Y.Z` publica
+  TS→npm y Java→Maven en **GitHub Packages**, Python (wheel) como asset del Release, y Go
+  queda publicado por el tag (`go get`). La publicación usa el `GITHUB_TOKEN` de Actions
+  (`permissions: packages: write`); no requiere secretos adicionales.
+- **Versionado:** las versiones en `package.json`/`pom.xml`/`pyproject.toml` deben coincidir
+  con el tag; el workflow valida la consistencia antes de publicar. Para una versión nueva:
+  bumpear los 3 manifiestos + `__init__.py` y empujar el tag correspondiente.
 
 ---
 
@@ -116,8 +128,7 @@ weaver registry generate --registry model/ --templates templates/ typescript gen
   (a futuro) política de evolución de schema.
 - Todo cambio debe pasar `weaver registry check` en verde antes de commit/PR.
 
-## Fuera de alcance de la Fase 1 (no hacer sin autorización)
+## Fuera de alcance (no hacer sin autorización)
 
-- Publicar paquetes o crear tags de release.
-- Workflows de CI/CD.
-- Migrar a `file_format: definition/2`.
+- Migrar a `file_format: definition/2` (implica reescribir modelo + policy + templates).
+- Cambiar los destinos de publicación o el esquema de versionado sin acuerdo.

@@ -2,20 +2,32 @@
 .weaver/
 vdir_cache/
 
-# Artefactos de verificación de compilación
-*.class
-/tmp/
-
 # OS / editor
 .DS_Store
 *.swp
 .idea/
 .vscode/
 
-# NOTA: `gen/` SÍ se versiona en este lab (salida generada, para revisión).
-# Si en el futuro se prefiere no versionar la salida, descomentar:
-# gen/
-
-# Python bytecode
+# --- Artefactos de build/empaquetado (regenerables; NO se versionan) ---
+# Java
+*.class
+packages/java/target/
+# TypeScript / npm
+node_modules/
+packages/typescript/dist/
+packages/typescript/*.tgz
+# Python
 __pycache__/
 *.pyc
+packages/python/dist/
+packages/python/build/
+packages/python/src/*.egg-info/
+*.whl
+
+# NOTA: la SALIDA GENERADA por Weaver (código fuente de constantes) SÍ se versiona
+# en sus ubicaciones canónicas para revisión y para que el módulo Go / los paquetes
+# sean consumibles directo del repo:
+#   otel/ctattributes/attributes.go
+#   packages/typescript/src/attributes.ts
+#   packages/java/src/main/java/cl/culturetech/otel/CtAttributes.java
+#   packages/python/src/culturetech_otel/attributes.py

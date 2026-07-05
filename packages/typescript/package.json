@@ -1,0 +1,37 @@
+{
+  "name": "@culturetechcl/lab-otel-conventions",
+  "version": "0.1.0",
+  "description": "Constantes tipadas de las convenciones semánticas OpenTelemetry (ct.*) del laboratorio CultureTech. Código generado por OpenTelemetry Weaver.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "main": "dist/attributes.js",
+  "module": "dist/attributes.js",
+  "types": "dist/attributes.d.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepublishOnly": "npm run build"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CultureTechCL/culturetech-lab-otel-conventions.git",
+    "directory": "packages/typescript"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  },
+  "keywords": [
+    "opentelemetry",
+    "semantic-conventions",
+    "weaver",
+    "culturetech",
+    "telemetry"
+  ]
+}

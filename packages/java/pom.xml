@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Paquete Maven con las constantes de convenciones OTel (ct.*) de CultureTech.
+  Se publica en GitHub Packages (Maven registry).
+
+  Consumo:
+    <dependency>
+      <groupId>cl.culturetech.otel</groupId>
+      <artifactId>lab-otel-conventions</artifactId>
+      <version>0.1.0</version>
+    </dependency>
+  (requiere configurar el repositorio maven.pkg.github.com en settings.xml)
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>cl.culturetech.otel</groupId>
+  <artifactId>lab-otel-conventions</artifactId>
+  <version>0.1.0</version>
+  <packaging>jar</packaging>
+
+  <name>CultureTech Lab OTel Conventions</name>
+  <description>Constantes tipadas de las convenciones semánticas OpenTelemetry (ct.*) del laboratorio CultureTech. Código generado por OpenTelemetry Weaver.</description>
+  <url>https://github.com/CultureTechCL/culturetech-lab-otel-conventions</url>
+
+  <properties>
+    <maven.compiler.release>17</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+
+  <distributionManagement>
+    <repository>
+      <id>github</id>
+      <name>GitHub CultureTechCL Apache Maven Packages</name>
+      <url>https://maven.pkg.github.com/CultureTechCL/culturetech-lab-otel-conventions</url>
+    </repository>
+  </distributionManagement>
+</project>

@@ -1,0 +1,22 @@
+# Paquete Python con las constantes de convenciones OTel (ct.*) de CultureTech.
+# GitHub Packages NO aloja paquetes Python (PyPI); por eso el wheel resultante se
+# adjunta como asset del GitHub Release. También puede instalarse directo del repo:
+#   pip install "git+https://github.com/CultureTechCL/culturetech-lab-otel-conventions.git@v0.1.0#subdirectory=packages/python"
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "culturetech-lab-otel-conventions"
+version = "0.1.0"
+description = "Constantes tipadas de las convenciones semánticas OpenTelemetry (ct.*) del laboratorio CultureTech. Código generado por OpenTelemetry Weaver."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "UNLICENSED" }
+keywords = ["opentelemetry", "semantic-conventions", "weaver", "culturetech", "telemetry"]
+
+[project.urls]
+Repository = "https://github.com/CultureTechCL/culturetech-lab-otel-conventions"
+
+[tool.setuptools.packages.find]
+where = ["src"]

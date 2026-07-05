@@ -1,0 +1,27 @@
+name: "Setup OpenTelemetry Weaver"
+description: "Descarga el binario de OpenTelemetry Weaver (Linux x86_64) y lo agrega al PATH."
+inputs:
+  version:
+    description: "Versión de Weaver a instalar (tag del release, sin la 'v')."
+    required: false
+    default: "0.24.2"
+runs:
+  using: "composite"
+  steps:
+    - name: Descargar e instalar Weaver
+      shell: bash
+      env:
+        WEAVER_VERSION: ${{ inputs.version }}
+      run: |
+        set -euo pipefail
+        asset="weaver-x86_64-unknown-linux-gnu.tar.xz"
+        url="https://github.com/open-telemetry/weaver/releases/download/v${WEAVER_VERSION}/${asset}"
+        echo "▶ Descargando ${url}"
+        curl -fsSL "$url" -o "$asset"
+        tar -xf "$asset"
+        install_dir="$HOME/.local/bin"
+        mkdir -p "$install_dir"
+        mv weaver-x86_64-unknown-linux-gnu/weaver "$install_dir/weaver"
+        chmod +x "$install_dir/weaver"
+        echo "$install_dir" >> "$GITHUB_PATH"
+        "$install_dir/weaver" --version
