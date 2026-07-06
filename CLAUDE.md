@@ -131,6 +131,34 @@ weaver registry generate --registry model/ --templates templates/ typescript gen
   (a futuro) política de evolución de schema.
 - Todo cambio debe pasar `weaver registry check` en verde antes de commit/PR.
 
+## Política de exposición de enums (idiomática por lenguaje, DELIBERADA)
+
+Los atributos enum del contrato (`ct.compliance_level`, `ct.payment.method`,
+`ct.shipping.runtime_variant`) exponen sus valores permitidos con el patrón **natural de
+cada ecosistema**. La diferencia estructural entre lenguajes es **una decisión explícita, no
+un accidente**: NO se fuerza consistencia estructural entre lenguajes.
+
+| Lenguaje | Dónde vive el valor | Forma |
+|---|---|---|
+| **Python** | Clase interna `<Atributo>Values` anidada en la clase de atributos del dominio | `PaymentAttributes.PaymentMethodValues.CREDIT_CARD == "credit_card"` |
+| **TypeScript** | Constante `as const` de **nivel superior** + tipo unión derivado (NO `enum` de TS ni namespaces) | `PaymentMethodValues.CREDIT_CARD` · `type PaymentMethodValue = …` |
+| **Java** | Clase interna `<Atributo>Values` con `public static final String` (NO `enum` de Java) | `CtAttributes.PaymentAttributes.PaymentMethodValues.CREDIT_CARD` |
+| **Go** | Constantes de nivel de paquete en un bloque `const ( … )` por atributo, con prefijo | `ct.PaymentMethodCreditCard` |
+
+**Regla transversal (invariante):** el **VALOR** que representa cada constante es SIEMPRE el
+**string canónico OTel exacto** (`"credit_card"`, `"standard"`, `"graalvm"`, …), idéntico en
+los cuatro lenguajes. Lo único que cambia entre lenguajes es **dónde vive** la constante, no
+su contenido.
+
+**Por qué idiomática y no uniforme:** la tesis del lab es "contrato común, mecanismo de
+consumo específico del runtime". Un mismo contrato de telemetría se consume de forma
+**gobernada** respetando la idiomática de cada ecosistema (clase anidada en Python/Java,
+`as const` en TS, constantes de paquete en Go). Forzar una estructura uniforme entre lenguajes
+iría en contra de esa tesis y produciría código no idiomático en al menos tres de los cuatro.
+Las decisiones concretas (p. ej. Java con `public static final String` en vez de `enum`, para
+que el valor sea el string OTel directamente usable por el SDK) quedan declaradas en el
+comentario de cabecera de cada template en `templates/<lenguaje>/`.
+
 ## Fuera de alcance (no hacer sin autorización)
 
 - Migrar a `file_format: definition/2`: fuera de alcance por MADUREZ (v2 en Alpha), no por
