@@ -35,7 +35,7 @@ sin dependencias circulares. El diseño DEBE poder evolucionar a una jerarquía
 multinivel **sin reescritura**. Reglas que este repo respeta y que tú DEBES mantener:
 
 - **Cada dominio vive en su carpeta autocontenida.** Extraer un dominio a su propio
-  registro (repo o subcarpeta con su propio `registry_manifest.yaml`) debe ser trivial.
+  registro (repo o subcarpeta con su propio `manifest.yaml`) debe ser trivial.
 - **No hardcodear supuestos de "registro único plano"** en templates ni en CI. Los
   filtros de template y la policy se basan en el **prefijo de id** (`registry.ct.`),
   no en la topología del registro.
@@ -66,23 +66,24 @@ inicial y están documentadas a propósito:
    policy + templates de forma coordinada), no un conflicto del diseño actual. La conclusión
    —quedarse en v1— es por madurez de la sintaxis, no porque el diseño esté "peleado" con v2.
 
-2. **`registry_manifest.yaml` vive dentro de `model/`.**
+2. **`manifest.yaml` vive dentro de `model/`.**
    Weaver escanea recursivamente TODO `*.yaml` bajo el directorio de `--registry` como
    archivos semconv. Manteniendo el registro autocontenido en `model/`, el comando
    canónico `--registry model/` funciona y `templates/`, `policies/`, `docs/` quedan
    **fuera** del escaneo (si no, Weaver intenta parsear los `weaver.yaml` de `templates/`
-   como semconv y falla).
+   como semconv y falla). El archivo se llama `manifest.yaml` (nombre canónico que Weaver
+   prefiere); antes se llamaba `registry_manifest.yaml`, renombrado en Fase 1b.
 
-3. **Manifiesto con `schema_url` (campo canónico en 0.24.2).**
+3. **Manifiesto con `schema_url` (campo canónico en 0.24.x).**
    `name` y `semconv_version` se conservan como documentación humana, pero Weaver deriva
    nombre y versión de `schema_url`. Usar `schema_url` evita el warning de deprecación.
 
-4. **Dependencia OTel vía URL de archivo del tag** (`.../archive/refs/tags/v1.40.0.zip[model]`),
-   no la forma git `@v1.40.0` (cuyo fetch de refspec no está completamente implementado).
+4. **Dependencia OTel vía URL de archivo del tag** (`.../archive/refs/tags/v1.42.0.zip[model]`),
+   no la forma git `@v1.42.0` (cuyo fetch de refspec no está completamente implementado).
    El archivo fija la versión de forma 100% reproducible.
 
-5. **Warning aceptado:** Weaver sugiere renombrar `registry_manifest.yaml` a `manifest.yaml`.
-   Es un warning cosmético; conservamos `registry_manifest.yaml`. No rompe el check.
+5. **Nombre del manifiesto:** `model/manifest.yaml` es el nombre canónico que Weaver
+   prefiere; con él, `weaver registry check` no emite el warning de "legacy file name".
 
 ---
 
@@ -101,19 +102,35 @@ weaver registry generate --registry model/ --templates templates/ java       gen
 weaver registry generate --registry model/ --templates templates/ typescript gen/typescript
 ```
 
-## Empaquetado y publicación (Fase 1b — PENDIENTE de autorización humana)
+## Empaquetado y publicación (Fase 1b)
 
-> Estado: NO implementado. El repo está en Hito 1a (contrato validado + generación LOCAL a
-> `gen/<lenguaje>/`). Lo siguiente es un PLAN a ejecutar solo con autorización.
+La publicación la dispara un **tag `vX.Y.Z`** mediante `.github/workflows/release.yml`. La
+versión sale **siempre del tag** (fuente de verdad); no hay versiones hardcodeadas en el repo.
 
-- Los paquetes se generan on-demand a `gen/<lenguaje>/` (efímero, no versionado).
-- La Fase 1b definirá empaquetado y publicación (npm/Maven en GitHub Packages, wheel de
-  Python, Go por tag) mediante tooling a acordar.
-- Versionado: la primera versión publicable legítima será **0.1.1**. La `0.1.0` fue publicada
-  por error (Hito 1b no autorizado) y sus paquetes fueron eliminados de GitHub Packages; ese
-  número de versión no se reutiliza para contenido corregido, porque GitHub Packages no
-  permite republicar contenido distinto bajo un namespace+versión eliminado. No se intentará
-  restaurar la `0.1.0` borrada.
+**Principio anti-contaminación:** el repo contiene SOLO el contrato Weaver. Los templates
+generan únicamente los archivos de constantes (`attributes.*` / `CtAttributes.java`), NO los
+manifiestos de empaquetado. Por eso `release.yml` **sintetiza** `package.json`, `pom.xml`,
+`pyproject.toml`, `__init__.py` y `go.mod` **en CI**, dentro de `gen/` (efímero). Nada de
+empaquetado se versiona en el repo.
+
+| Lenguaje | Destino | Coordenada |
+|---|---|---|
+| **TypeScript** | GitHub Packages (npm) | `@culturetechcl/lab-otel-conventions` |
+| **Java** | GitHub Packages (Maven) | `cl.culturetech.otel:lab-otel-conventions` |
+| **Python** | Asset del GitHub Release (wheel + sdist) | `culturetech-lab-otel-conventions` |
+| **Go** | **No publicado en esta fase** (ver limitación abajo) | — |
+
+**Limitación de Go (documentada):** el consumo por `go get` requiere que exista un módulo Go
+(un `go.mod`) en una ruta estable del repositorio. Por la regla de gobernanza, la **raíz del
+repo NO es un módulo Go** y los templates no generan `go.mod`. Por eso el job `publish-go`
+solo realiza **verificación sintáctica** (`go vet` sobre un `go.mod` efímero en `gen/go/`), no
+una publicación real. Habilitar `go get` es trabajo futuro (requeriría decidir un layout de
+módulo Go versionado sin contaminar la raíz) y queda fuera de alcance de esta fase.
+
+**Versionado:** la primera versión publicable legítima es **0.1.1**. La `0.1.0` fue publicada
+por error (Hito 1b no autorizado), fue revertida y sus paquetes se eliminaron de GitHub
+Packages; ese número no se reutiliza (GitHub Packages no permite republicar bajo un
+namespace+versión eliminado). Para una versión nueva: empujar el tag `vX.Y.Z` correspondiente.
 
 ---
 
@@ -126,7 +143,7 @@ weaver registry generate --registry model/ --templates templates/ typescript gen
   **enum** con `members`, no como `string` libre.
 - **`stability: development`** mientras el contrato esté en v0.x. No usar `stable` aún.
 - **Nunca** reutilizar/redefinir un atributo estándar de OTel: referenciarlo con `ref:`
-  (la dependencia OTel v1.40.0 está declarada en el manifiesto).
+  (la dependencia OTel v1.42.0 está declarada en el manifiesto).
 - **No romper contratos:** renombrar/eliminar un atributo ya publicado requiere versión y
   (a futuro) política de evolución de schema.
 - Todo cambio debe pasar `weaver registry check` en verde antes de commit/PR.

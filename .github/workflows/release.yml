@@ -1,0 +1,286 @@
+name: release
+
+# Publicación de una versión del contrato de convenciones OTel de CultureTech.
+# Se dispara al empujar un tag `vX.Y.Z`. La versión sale SIEMPRE del tag (fuente
+# de verdad); no hay versiones hardcodeadas en el repo.
+#
+# NOTA DE DISEÑO (importante): el repo de convenciones contiene SOLO el contrato
+# Weaver (model/, policies/, templates/). Los templates generan ÚNICAMENTE los
+# archivos de constantes (`attributes.*` / `CtAttributes.java`), NO los
+# manifiestos de empaquetado (package.json, pom.xml, pyproject.toml, go.mod).
+# Por eso este workflow SINTETIZA esos manifiestos EN CI, dentro de `gen/`
+# (salida efímera), inyectando la versión del tag. Así nada de empaquetado se
+# versiona en el repo (se respeta la regla anti-contaminación de la raíz).
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Gate de calidad: sin validación (registro + policies), sin publicación.
+  # ---------------------------------------------------------------------------
+  validate:
+    name: validate (weaver check)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: open-telemetry/weaver/.github/actions/setup-weaver@v0.24.1
+        with:
+          version: "0.24.1"
+      - name: Validar registro y policies
+        run: weaver registry check --registry model/ --policy policies/
+
+  # ---------------------------------------------------------------------------
+  # TypeScript -> npm en GitHub Packages
+  # ---------------------------------------------------------------------------
+  publish-typescript:
+    name: publish-typescript (npm)
+    runs-on: ubuntu-latest
+    needs: validate
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: open-telemetry/weaver/.github/actions/setup-weaver@v0.24.1
+        with:
+          version: "0.24.1"
+      - name: Extraer versión del tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+      - name: Generar constantes TypeScript
+        run: |
+          weaver registry generate --registry model/ --templates templates/ typescript gen/typescript
+      - name: Sintetizar paquete npm (package.json + tsconfig) con la versión del tag
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+        run: |
+          cd gen/typescript
+          cat > package.json <<EOF
+          {
+            "name": "@culturetechcl/lab-otel-conventions",
+            "version": "${VERSION}",
+            "description": "Constantes tipadas de las convenciones OpenTelemetry (ct.*) de CultureTech. Generado por OpenTelemetry Weaver.",
+            "license": "UNLICENSED",
+            "type": "module",
+            "main": "dist/attributes.js",
+            "types": "dist/attributes.d.ts",
+            "files": ["dist", "attributes.ts"],
+            "publishConfig": { "registry": "https://npm.pkg.github.com" },
+            "repository": {
+              "type": "git",
+              "url": "git+https://github.com/CultureTechCL/culturetech-lab-otel-conventions.git",
+              "directory": "gen/typescript"
+            }
+          }
+          EOF
+          cat > tsconfig.json <<'EOF'
+          {
+            "compilerOptions": {
+              "target": "ES2020", "module": "ES2020", "moduleResolution": "node",
+              "declaration": true, "outDir": "dist", "strict": true, "skipLibCheck": true
+            },
+            "include": ["attributes.ts"]
+          }
+          EOF
+      - name: Compilar (tsc -> dist)
+        run: |
+          cd gen/typescript
+          npm install --no-audit --no-fund typescript@5
+          npx tsc -p tsconfig.json
+      - name: Publicar en GitHub Packages (npm)
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd gen/typescript
+          cat > .npmrc <<EOF
+          @culturetechcl:registry=https://npm.pkg.github.com
+          //npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
+          EOF
+          npm publish
+
+  # ---------------------------------------------------------------------------
+  # Java -> Maven en GitHub Packages
+  # ---------------------------------------------------------------------------
+  publish-java:
+    name: publish-java (maven)
+    runs-on: ubuntu-latest
+    needs: validate
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          server-id: github
+          server-username: MAVEN_USERNAME
+          server-password: MAVEN_PASSWORD
+      - uses: open-telemetry/weaver/.github/actions/setup-weaver@v0.24.1
+        with:
+          version: "0.24.1"
+      - name: Extraer versión del tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+      - name: Generar constantes Java en layout Maven
+        run: |
+          weaver registry generate --registry model/ --templates templates/ java \
+            gen/java/src/main/java/cl/culturetech/otel
+      - name: Sintetizar pom.xml con la versión del tag
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+        run: |
+          cat > gen/java/pom.xml <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <project xmlns="http://maven.apache.org/POM/4.0.0"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+            <modelVersion>4.0.0</modelVersion>
+            <groupId>cl.culturetech.otel</groupId>
+            <artifactId>lab-otel-conventions</artifactId>
+            <version>${VERSION}</version>
+            <packaging>jar</packaging>
+            <name>CultureTech Lab OTel Conventions</name>
+            <description>Constantes tipadas de las convenciones OpenTelemetry (ct.*) de CultureTech. Generado por OpenTelemetry Weaver.</description>
+            <url>https://github.com/CultureTechCL/culturetech-lab-otel-conventions</url>
+            <properties>
+              <maven.compiler.release>21</maven.compiler.release>
+              <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+            </properties>
+            <distributionManagement>
+              <repository>
+                <id>github</id>
+                <name>GitHub CultureTechCL Apache Maven Packages</name>
+                <url>https://maven.pkg.github.com/CultureTechCL/culturetech-lab-otel-conventions</url>
+              </repository>
+            </distributionManagement>
+          </project>
+          EOF
+      - name: Publicar en GitHub Packages (Maven)
+        env:
+          MAVEN_USERNAME: ${{ github.actor }}
+          MAVEN_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        run: mvn -f gen/java/pom.xml --batch-mode deploy -DskipTests
+
+  # ---------------------------------------------------------------------------
+  # Python -> wheel + sdist como assets del GitHub Release
+  # ---------------------------------------------------------------------------
+  publish-python:
+    name: publish-python (release asset)
+    runs-on: ubuntu-latest
+    needs: validate
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: open-telemetry/weaver/.github/actions/setup-weaver@v0.24.1
+        with:
+          version: "0.24.1"
+      - name: Extraer versión del tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+      - name: Generar constantes Python dentro del paquete
+        run: |
+          weaver registry generate --registry model/ --templates templates/ python \
+            gen/python/src/culturetech_otel_conventions
+      - name: Sintetizar paquete Python (pyproject.toml + __init__.py) con la versión del tag
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+        run: |
+          cd gen/python
+          cat > src/culturetech_otel_conventions/__init__.py <<EOF
+          """Convenciones semánticas ct.* de CultureTech (generado por OpenTelemetry Weaver)."""
+
+          from .attributes import (
+              CommonAttributes,
+              FulfillmentAttributes,
+              OrderAttributes,
+              PaymentAttributes,
+              ShippingAttributes,
+          )
+
+          __all__ = [
+              "CommonAttributes",
+              "OrderAttributes",
+              "PaymentAttributes",
+              "FulfillmentAttributes",
+              "ShippingAttributes",
+          ]
+
+          __version__ = "${VERSION}"
+          EOF
+          cat > pyproject.toml <<EOF
+          [build-system]
+          requires = ["setuptools>=61.0"]
+          build-backend = "setuptools.build_meta"
+
+          [project]
+          name = "culturetech-lab-otel-conventions"
+          version = "${VERSION}"
+          description = "Constantes tipadas de las convenciones OpenTelemetry (ct.*) de CultureTech."
+          requires-python = ">=3.8"
+          license = { text = "UNLICENSED" }
+
+          [tool.setuptools.packages.find]
+          where = ["src"]
+          EOF
+      - name: Construir wheel + sdist
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build gen/python
+      - name: Adjuntar artefactos al GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Asegura que el release del tag exista (idempotente) y sube los artefactos.
+          gh release create "${GITHUB_REF_NAME}" --title "${GITHUB_REF_NAME}" \
+            --notes "Contrato de convenciones OTel (ct.*) de CultureTech — ${GITHUB_REF_NAME}." \
+            || echo "El release ya existe; se continúa."
+          gh release upload "${GITHUB_REF_NAME}" \
+            gen/python/dist/*.whl gen/python/dist/*.tar.gz --clobber
+
+  # ---------------------------------------------------------------------------
+  # Go -> verificación sintáctica (go vet). Ver limitación documentada en CLAUDE.md.
+  # ---------------------------------------------------------------------------
+  publish-go:
+    name: publish-go (verificación)
+    runs-on: ubuntu-latest
+    needs: validate
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - uses: open-telemetry/weaver/.github/actions/setup-weaver@v0.24.1
+        with:
+          version: "0.24.1"
+      - name: Generar constantes Go
+        run: |
+          weaver registry generate --registry model/ --templates templates/ go gen/go
+      - name: Verificar el módulo Go (go vet)
+        run: |
+          # La raíz del repo NO es un módulo Go (regla de gobernanza) y los templates
+          # no generan go.mod. Se crea un go.mod EFÍMERO solo para verificar sintaxis.
+          # Consumo real por `go get` NO está disponible en esta fase (ver CLAUDE.md).
+          cd gen/go
+          printf 'module github.com/CultureTechCL/culturetech-lab-otel-conventions/gen/go\n\ngo 1.22\n' > go.mod
+          go vet ./...

@@ -35,7 +35,7 @@ culturetech-lab-otel-conventions/
 ├── README.md                       # Este archivo
 ├── CODEOWNERS                      # Propiedad federada por dominio
 ├── model/                          # ← EL REGISTRO (raíz para `--registry model/`)
-│   ├── registry_manifest.yaml      #   Identidad del registro + dependencia OTel v1.40.0
+│   ├── manifest.yaml      #   Identidad del registro + dependencia OTel v1.42.0
 │   ├── common/organizational.yaml  #   ct.team, ct.cost_center, ct.compliance_level (enum)
 │   ├── orders/attributes.yaml      #   ct.order.id, ct.order.total, ct.order.items_count
 │   ├── payments/
@@ -62,7 +62,7 @@ culturetech-lab-otel-conventions/
 > **no se versiona** (está en `.gitignore`). La raíz **no** es módulo de ningún lenguaje.
 
 > **Nota de ubicación del manifiesto.** A diferencia de un árbol donde el manifiesto
-> estaría en la raíz del repo, aquí `registry_manifest.yaml` vive **dentro de `model/`**.
+> estaría en la raíz del repo, aquí `manifest.yaml` vive **dentro de `model/`**.
 > Weaver escanea recursivamente todo `*.yaml` bajo el directorio de `--registry` como
 > archivos semconv; manteniendo el registro autocontenido en `model/`, el comando
 > canónico `--registry model/` funciona y `templates/`, `policies/`, `docs/` quedan fuera
@@ -94,10 +94,10 @@ weaver registry check --registry model/ --policy policies/
 ```
 
 Debe salir en **verde** (`✔ No 'after_resolution' policy violation`, exit `0`). La primera
-ejecución descarga y cachea la dependencia OTel v1.40.0 en `~/.weaver/vdir_cache/`.
+ejecución descarga y cachea la dependencia OTel v1.42.0 en `~/.weaver/vdir_cache/`.
 
-> El único warning esperado es el de renombrar `registry_manifest.yaml` a `manifest.yaml`
-> (cosmético; se conserva el nombre a propósito).
+> Con el manifiesto nombrado `model/manifest.yaml` (nombre canónico), `weaver registry check`
+> no emite ningún warning.
 
 ### 2) Generar las constantes (LOCAL, efímero)
 
@@ -148,7 +148,7 @@ registro **sin reescribir** el resto.
 
 ```
 model/                         # registro "culturetech" (schema_url .../lab-otel/0.1.0)
-├── registry_manifest.yaml     #   dependencia: OTel semconv v1.40.0
+├── manifest.yaml     #   dependencia: OTel semconv v1.42.0
 ├── common/ orders/ payments/ fulfillment/ shipping/
 ```
 
@@ -163,34 +163,34 @@ registro independiente que **depende** del registro base de CultureTech (para re
 ```
 registries/
 ├── culturetech-base/                 # registro base (ex-model/, sin payments)
-│   ├── registry_manifest.yaml        #   dep: OTel v1.40.0
+│   ├── manifest.yaml        #   dep: OTel v1.42.0
 │   │   #   name: culturetech-base
 │   │   #   schema_url: https://schemas.culturetech.cl/lab-otel-base/0.2.0
 │   └── common/ orders/ fulfillment/ shipping/
 │
 └── culturetech-payments/             # registro de dominio extraído
-    ├── registry_manifest.yaml
+    ├── manifest.yaml
     │   #   name: culturetech-payments
     │   #   schema_url: https://schemas.culturetech.cl/lab-otel-payments/0.1.0
     │   #   dependencies:
     │   #     - schema_url: https://schemas.culturetech.cl/lab-otel-base/0.2.0
     │   #       registry_path: ../culturetech-base        # (o URL git/zip del repo base)
-    │   #     - schema_url: https://opentelemetry.io/schemas/1.40.0
-    │   #       registry_path: https://github.com/open-telemetry/semantic-conventions/archive/refs/tags/v1.40.0.zip[model]
+    │   #     - schema_url: https://opentelemetry.io/schemas/1.42.0
+    │   #       registry_path: https://github.com/open-telemetry/semantic-conventions/archive/refs/tags/v1.42.0.zip[model]
     └── attributes.yaml  metrics.yaml   # los mismos archivos, movidos SIN cambios
 ```
 
 Grafo de dependencias resultante:
 
 ```
-culturetech-payments ──► culturetech-base ──► OTel v1.40.0
-                     └──────────────────────► OTel v1.40.0   (declarada explícitamente)
+culturetech-payments ──► culturetech-base ──► OTel v1.42.0
+                     └──────────────────────► OTel v1.42.0   (declarada explícitamente)
 ```
 
 **Por qué la extracción es trivial en este repo:**
 
 - Cada dominio ya está en su **carpeta autocontenida**; mover `payments/` a un registro nuevo
-  es un `git mv` + un `registry_manifest.yaml` propio.
+  es un `git mv` + un `manifest.yaml` propio.
 - La **policy** `ct_naming` filtra por prefijo de id (`registry.ct.`), no por topología: sigue
   cubriendo los grupos `registry.ct.payment` estén donde estén.
 - Los **templates** derivan el nombre de clase del `id` del grupo (`registry.ct.payment` →
