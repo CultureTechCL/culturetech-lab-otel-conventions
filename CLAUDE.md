@@ -164,22 +164,42 @@ github.com/CultureTechCL/culturetech-lab-otel-conventions/gen/go
 **Consumo desde un servicio Go:**
 
 ```bash
-go get github.com/CultureTechCL/culturetech-lab-otel-conventions/gen/go@v0.1.1
+go get github.com/CultureTechCL/culturetech-lab-otel-conventions/gen/go@v0.1.2
 ```
+
+### Dos tags por release (global + subdirectorio)
+
+Como el `go.mod` del módulo Go vive en el **subdirectorio** `gen/go/` (no en la raíz), la
+convención oficial de Go exige que el tag de versión lleve el **prefijo del subdirectorio**.
+Por eso cada release crea **dos** tags que apuntan al **mismo commit**:
+
+| Tag | Para qué | Quién lo crea |
+|---|---|---|
+| `vX.Y.Z` | Tag **global**: dispara `release.yml` y publica npm/Maven/Python. | El humano (o quien corta la release). |
+| `gen/go/vX.Y.Z` | Tag del **módulo Go**: es el que `go get` resuelve. | El job `publish-go` (automático). |
+
+`go get …/gen/go@vX.Y.Z` NO usa el tag global `vX.Y.Z`: Go sabe que el módulo está en
+`gen/go/` y resuelve el tag `gen/go/vX.Y.Z` automáticamente.
 
 El directorio `gen/go/` está **rastreado por Git** (el `.gitignore` lo excluye explícitamente
 de la regla `gen/*` con `!gen/go/`). Los demás subdirectorios de `gen/` (`typescript/`, `java/`,
 `python/`) siguen **ignorados**, porque esos lenguajes se publican a registries externos.
 
-El workflow `release.yml` (job `publish-go`) **regenera** `gen/go/`, y **solo si cambió** lo
-recommitea y hace force-push del tag, antes de verificar el consumo remoto (`go get`). El
-guard "solo si cambió" evita re-disparar el workflow en bucle. Esto garantiza que el tag
-siempre apunte a un commit que incluye el módulo Go actualizado.
+### Flujo de `publish-go`
 
-> **Mantener `gen/go/` al día en `main`:** al cambiar el modelo, regenerar y commitear
-> `gen/go/` en `main` **antes** de taggear. Si el tag se corta desde un `main` con `gen/go/`
-> al día, `publish-go` no necesita mover el tag (no hay diff), y los jobs npm/Maven no se
-> re-ejecutan. (Ver nota de riesgo del force-push en el propio `release.yml`.)
+`gen/go/` se mantiene commiteado y **al día en `main`** (lo garantiza el step *"Check gen/go
+drift"* de `validate.yaml`, que falla el CI si `gen/go/` no coincide con regenerar desde el
+modelo). Por eso `publish-go` **no** mueve el tag global ni recommitea: solo **crea el tag de
+subdirectorio** `gen/go/vX.Y.Z` (idempotente: si ya existe, hace skip) en el mismo commit del
+tag global, y verifica el consumo remoto con `go get`.
+
+> **Nota `GOPRIVATE` (consumidores en CI):** para consumir un tag recién publicado conviene
+> `export GOPRIVATE=github.com/CultureTechCL/*` para que `go get` vaya directo al repo por git
+> y salte el proxy (`proxy.golang.org`) y la checksum DB (`sum.golang.org`) públicos, que
+> cachean versiones como inmutables. El propio `publish-go` usa `GOPRIVATE` en su verificación.
+
+> **Antes de taggear:** al cambiar el modelo, regenerar y commitear `gen/go/` en `main` (el
+> gate de drift lo exige). Así el commit del tag ya incluye el módulo Go al día.
 
 ---
 

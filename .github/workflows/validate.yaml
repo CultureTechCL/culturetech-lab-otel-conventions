@@ -1,7 +1,7 @@
 name: validate
 
-# Gate de gobernanza del contrato: valida el registro y sus policies en cada PR.
-# No genera código, no empaqueta y no publica. Solo `weaver registry check`.
+# Gate de gobernanza del contrato: valida el registro y sus policies en cada PR,
+# y verifica que el módulo Go versionado (`gen/go/`) esté al día con el modelo.
 on:
   push:
     branches: [main]
@@ -20,3 +20,17 @@ jobs:
       - uses: ./.github/actions/setup-weaver
       - name: Validar registro y policies
         run: weaver registry check --registry model/ --policy policies/
+      - name: Check gen/go drift
+        run: |
+          # `gen/go/` SÍ se versiona (Go se consume por tag). Debe coincidir con lo
+          # que produce regenerar desde el modelo; si no, el módulo Go publicado
+          # quedaría desactualizado.
+          weaver registry generate --registry model/ --templates templates/ go gen/go-fresh
+          if ! diff -r gen/go-fresh gen/go >/dev/null 2>&1; then
+            echo "::error::gen/go/ está desactualizado. Regenera con: weaver registry generate --registry model/ --templates templates/ go gen/go"
+            diff -r gen/go-fresh gen/go || true
+            rm -rf gen/go-fresh
+            exit 1
+          fi
+          rm -rf gen/go-fresh
+          echo "✅ gen/go/ está al día con el modelo"
