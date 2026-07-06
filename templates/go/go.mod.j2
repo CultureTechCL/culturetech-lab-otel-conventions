@@ -1,0 +1,18 @@
+{#-
+  Template Go — go.mod del módulo generado.
+
+  Genera un `go.mod` estático en `gen/go/` para que la salida sea un MÓDULO Go
+  válido (importable/compilable). El contenido es fijo: el module path canónico y
+  la versión del lenguaje Go. La VERSIÓN del módulo (para `go get ...@vX.Y.Z`) NO
+  vive en go.mod: la provee el tag de Git del repositorio.
+
+  NOTA (consumo por `go get`): para que `go get <module>@<tag>` funcione, el
+  directorio `gen/go/` (con este go.mod y attributes.go) debe estar PRESENTE en el
+  árbol del repositorio en ese tag. Hoy `gen/` es efímero (gitignored), por lo que
+  este go.mod habilita compilación/validación local y en CI, pero el consumo remoto
+  por tag requiere además versionar `gen/go/` — decisión de gobernanza pendiente
+  (ver CLAUDE.md § "Empaquetado y publicación").
+-#}
+module github.com/CultureTechCL/culturetech-lab-otel-conventions/gen/go
+
+go 1.22

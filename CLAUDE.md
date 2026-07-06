@@ -89,18 +89,39 @@ inicial y están documentadas a propósito:
 
 ## Comandos
 
-Requiere `weaver` (OpenTelemetry Weaver) ≥ 0.24.2 en el PATH.
+Requiere `weaver` (OpenTelemetry Weaver) ≥ 0.24.1 en el PATH.
 
 ```bash
 # Validar el registro + policies (debe salir en verde, exit 0)
 weaver registry check --registry model/ --policy policies/
-
-# Generar las constantes de los 4 lenguajes a gen/<lenguaje>/ (efímero, no versionado)
-weaver registry generate --registry model/ --templates templates/ go         gen/go
-weaver registry generate --registry model/ --templates templates/ python     gen/python
-weaver registry generate --registry model/ --templates templates/ java       gen/java
-weaver registry generate --registry model/ --templates templates/ typescript gen/typescript
 ```
+
+Para generar las constantes por lenguaje, ver **§ "Comandos de generación
+(weaver registry generate)"** más abajo (fuente única de verdad de la sintaxis).
+
+## Comandos de generación (weaver registry generate)
+
+Sintaxis **verificada contra Weaver 0.24.1** (la misma versión que usan los
+workflows). La forma correcta es `weaver registry generate --registry <reg>
+--templates <raíz-de-templates> <TARGET> <OUTPUT>`, donde `<TARGET>` es el nombre
+de la subcarpeta bajo `templates/` (no `single`; `single` es el `application_mode`
+que se declara dentro de cada `templates/<target>/weaver.yaml`).
+
+```bash
+# TypeScript
+weaver registry generate --registry model/ --templates templates/ typescript gen/typescript
+# Java
+weaver registry generate --registry model/ --templates templates/ java       gen/java
+# Python
+weaver registry generate --registry model/ --templates templates/ python     gen/python
+# Go
+weaver registry generate --registry model/ --templates templates/ go         gen/go
+```
+
+La salida va a `gen/<lenguaje>/` (efímera, no versionada; ver `.gitignore`).
+
+> **Nota:** la sintaxis puede cambiar entre versiones de Weaver; verificar contra
+> el release notes antes de actualizar la versión del binario en los workflows.
 
 ## Empaquetado y publicación (Fase 1b)
 
@@ -108,24 +129,29 @@ La publicación la dispara un **tag `vX.Y.Z`** mediante `.github/workflows/relea
 versión sale **siempre del tag** (fuente de verdad); no hay versiones hardcodeadas en el repo.
 
 **Principio anti-contaminación:** el repo contiene SOLO el contrato Weaver. Los templates
-generan únicamente los archivos de constantes (`attributes.*` / `CtAttributes.java`), NO los
-manifiestos de empaquetado. Por eso `release.yml` **sintetiza** `package.json`, `pom.xml`,
-`pyproject.toml`, `__init__.py` y `go.mod` **en CI**, dentro de `gen/` (efímero). Nada de
-empaquetado se versiona en el repo.
+generan los archivos de constantes (`attributes.*` / `CtAttributes.java`) y, para Go, además
+el `go.mod` (template `templates/go/go.mod.j2`). Los **manifiestos de empaquetado restantes**
+(`package.json`, `pom.xml`, `pyproject.toml`, `__init__.py`) NO los generan los templates: los
+**sintetiza `release.yml` en CI**, dentro de `gen/` (efímero). Nada de empaquetado se versiona
+en el repo (la raíz no es módulo de ningún lenguaje).
 
 | Lenguaje | Destino | Coordenada |
 |---|---|---|
 | **TypeScript** | GitHub Packages (npm) | `@culturetechcl/lab-otel-conventions` |
 | **Java** | GitHub Packages (Maven) | `cl.culturetech.otel:lab-otel-conventions` |
 | **Python** | Asset del GitHub Release (wheel + sdist) | `culturetech-lab-otel-conventions` |
-| **Go** | **No publicado en esta fase** (ver limitación abajo) | — |
+| **Go** | Módulo generado (compila); `go get` remoto pendiente | `github.com/CultureTechCL/culturetech-lab-otel-conventions/gen/go` |
 
-**Limitación de Go (documentada):** el consumo por `go get` requiere que exista un módulo Go
-(un `go.mod`) en una ruta estable del repositorio. Por la regla de gobernanza, la **raíz del
-repo NO es un módulo Go** y los templates no generan `go.mod`. Por eso el job `publish-go`
-solo realiza **verificación sintáctica** (`go vet` sobre un `go.mod` efímero en `gen/go/`), no
-una publicación real. Habilitar `go get` es trabajo futuro (requeriría decidir un layout de
-módulo Go versionado sin contaminar la raíz) y queda fuera de alcance de esta fase.
+**Go — módulo generado (`go.mod` por template).** `templates/go/go.mod.j2` genera
+`gen/go/go.mod` con el **module path canónico**
+`github.com/CultureTechCL/culturetech-lab-otel-conventions/gen/go`, de modo que `gen/go/` es un
+módulo Go válido: el job `publish-go` verifica `go vet` **y** `go build` (compila). **Para
+habilitar el consumo remoto** `go get <module>@<tag>` (p. ej. desde `checkout-go` en Fase 3)
+falta UN requisito: `gen/go/` (con `go.mod` + `attributes.go`) debe estar **presente en el árbol
+del repositorio en ese tag**. Hoy `gen/` es efímero (gitignored), por lo que `go get` remoto
+todavía no resuelve, aunque el módulo ya es válido y compila. Versionar `gen/go/` en el tag es
+una **decisión de gobernanza pendiente** (contrapesa el principio anti-contaminación con la
+necesidad de consumo Go por tag); no se toma en este PR.
 
 **Versionado:** la primera versión publicable legítima es **0.1.1**. La `0.1.0` fue publicada
 por error (Hito 1b no autorizado), fue revertida y sus paquetes se eliminaron de GitHub

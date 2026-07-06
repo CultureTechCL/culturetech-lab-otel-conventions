@@ -16,3 +16,10 @@ templates:
     filter: '.groups | map(select(.id | startswith("registry.ct.")))'
     application_mode: single
     file_name: "attributes.go"
+
+  # go.mod estático: hace de `gen/go/` un módulo Go válido (compilable/importable).
+  # El `filter: '.'` hace que el template corra una sola vez (contenido fijo).
+  - template: go.mod.j2
+    filter: "."
+    application_mode: single
+    file_name: "go.mod"

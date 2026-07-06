@@ -17,7 +17,7 @@
 *                               @CultureTechCL/platform-observability
 
 # Infra del registro y contrato (manifiesto, policies, templates, docs)
-/model/registry_manifest.yaml   @CultureTechCL/platform-observability
+/model/manifest.yaml            @CultureTechCL/platform-observability
 /policies/                      @CultureTechCL/platform-observability
 /templates/                     @CultureTechCL/platform-observability
 /CLAUDE.md                      @CultureTechCL/platform-observability

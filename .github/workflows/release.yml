@@ -257,7 +257,14 @@ jobs:
             gen/python/dist/*.whl gen/python/dist/*.tar.gz --clobber
 
   # ---------------------------------------------------------------------------
-  # Go -> verificación sintáctica (go vet). Ver limitación documentada en CLAUDE.md.
+  # Go -> verificación del módulo generado (go.mod ahora viene del template Go).
+  # NOTA sobre `go get` remoto: el consumo por tag
+  #   (go get .../gen/go@vX.Y.Z) requiere que `gen/go/` esté PRESENTE en el árbol
+  #   del repositorio en ese tag. Hoy `gen/` es efímero (gitignored), por lo que
+  #   este job valida que el módulo COMPILA (vet + build), pero no verifica el
+  #   fetch remoto por tag (no habría módulo commiteado que resolver). Habilitar
+  #   `go get` remoto exige versionar `gen/go/` en el tag — decisión de gobernanza
+  #   pendiente (ver CLAUDE.md § "Empaquetado y publicación").
   # ---------------------------------------------------------------------------
   publish-go:
     name: publish-go (verificación)
@@ -273,14 +280,12 @@ jobs:
       - uses: open-telemetry/weaver/.github/actions/setup-weaver@v0.24.1
         with:
           version: "0.24.1"
-      - name: Generar constantes Go
+      - name: Generar constantes Go + go.mod (desde templates/go/)
         run: |
           weaver registry generate --registry model/ --templates templates/ go gen/go
-      - name: Verificar el módulo Go (go vet)
+          echo "go.mod generado por el template:" && cat gen/go/go.mod
+      - name: Verificar el módulo Go (vet + build)
         run: |
-          # La raíz del repo NO es un módulo Go (regla de gobernanza) y los templates
-          # no generan go.mod. Se crea un go.mod EFÍMERO solo para verificar sintaxis.
-          # Consumo real por `go get` NO está disponible en esta fase (ver CLAUDE.md).
           cd gen/go
-          printf 'module github.com/CultureTechCL/culturetech-lab-otel-conventions/gen/go\n\ngo 1.22\n' > go.mod
           go vet ./...
+          go build ./...
