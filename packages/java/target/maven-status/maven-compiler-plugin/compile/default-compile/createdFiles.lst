@@ -1,9 +1,0 @@
-cl/culturetech/otel/CtAttributes$ShippingAttributes$ShippingRuntimeVariantValues.class
-cl/culturetech/otel/CtAttributes$FulfillmentAttributes.class
-cl/culturetech/otel/CtAttributes$CommonAttributes$ComplianceLevelValues.class
-cl/culturetech/otel/CtAttributes$PaymentAttributes$PaymentMethodValues.class
-cl/culturetech/otel/CtAttributes.class
-cl/culturetech/otel/CtAttributes$CommonAttributes.class
-cl/culturetech/otel/CtAttributes$ShippingAttributes.class
-cl/culturetech/otel/CtAttributes$PaymentAttributes.class
-cl/culturetech/otel/CtAttributes$OrderAttributes.class
