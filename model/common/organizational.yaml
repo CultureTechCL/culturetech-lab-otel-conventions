@@ -1,8 +1,9 @@
 # =============================================================================
 # Dominio: common (organizacional)
 # =============================================================================
-# Atributos transversales que describen la propiedad organizacional y la
-# clasificación de datos de cualquier señal de telemetría del ecosistema.
+# Atributos transversales que describen la propiedad organizacional y el
+# régimen de cumplimiento regulatorio de cualquier señal de telemetría del
+# ecosistema.
 #
 # Convenciones (obligatorias, verificadas por policies/ct_naming.rego):
 #   - El `id` del grupo comienza con `registry.ct.<dominio>` -> aquí `registry.ct.common`.
@@ -19,7 +20,8 @@ groups:
     type: attribute_group
     brief: >-
       Atributos organizacionales transversales: propiedad de equipo, centro de
-      costo y nivel de cumplimiento. Aplicables a cualquier señal del ecosistema.
+      costo y nivel de cumplimiento regulatorio. Aplicables a cualquier señal
+      del ecosistema.
     attributes:
       - id: ct.team
         type: string
@@ -41,25 +43,18 @@ groups:
       - id: ct.compliance_level
         stability: development
         brief: >-
-          Nivel de clasificación de cumplimiento/sensibilidad de los datos que
-          maneja la operación. Controla políticas de retención y enmascarado.
+          Nivel de cumplimiento regulatorio del servicio o de la operación que
+          emite la telemetría. Marca qué telemetría cae bajo régimen regulatorio
+          (p. ej. CMF) para efectos de retención, auditoría y controles.
         type:
           members:
-            - id: public
-              value: "public"
-              brief: Información pública, sin restricciones de divulgación.
+            - id: standard
+              value: "standard"
+              brief: Servicio sin requisitos regulatorios especiales.
               stability: development
-            - id: internal
-              value: "internal"
-              brief: Uso interno de la organización.
-              stability: development
-            - id: confidential
-              value: "confidential"
-              brief: Información confidencial; acceso restringido por necesidad.
-              stability: development
-            - id: restricted
-              value: "restricted"
+            - id: regulated
+              value: "regulated"
               brief: >-
-                Información altamente restringida (p. ej. datos regulados);
-                máximo control de acceso y auditoría.
+                Servicio bajo régimen regulatorio (p. ej. CMF); sujeto a controles
+                de cumplimiento, auditoría y retención reforzados.
               stability: development

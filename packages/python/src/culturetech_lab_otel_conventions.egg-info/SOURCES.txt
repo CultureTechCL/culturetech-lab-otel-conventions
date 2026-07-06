@@ -1,0 +1,8 @@
+README.md
+pyproject.toml
+src/culturetech_lab_otel_conventions.egg-info/PKG-INFO
+src/culturetech_lab_otel_conventions.egg-info/SOURCES.txt
+src/culturetech_lab_otel_conventions.egg-info/dependency_links.txt
+src/culturetech_lab_otel_conventions.egg-info/top_level.txt
+src/culturetech_otel/__init__.py
+src/culturetech_otel/attributes.py

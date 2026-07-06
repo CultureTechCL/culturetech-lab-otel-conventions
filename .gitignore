@@ -8,26 +8,6 @@ vdir_cache/
 .idea/
 .vscode/
 
-# --- Artefactos de build/empaquetado (regenerables; NO se versionan) ---
-# Java
-*.class
-packages/java/target/
-# TypeScript / npm
-node_modules/
-packages/typescript/dist/
-packages/typescript/*.tgz
-# Python
-__pycache__/
-*.pyc
-packages/python/dist/
-packages/python/build/
-packages/python/src/*.egg-info/
-*.whl
-
-# NOTA: la SALIDA GENERADA por Weaver (código fuente de constantes) SÍ se versiona
-# en sus ubicaciones canónicas para revisión y para que el módulo Go / los paquetes
-# sean consumibles directo del repo:
-#   otel/ctattributes/attributes.go
-#   packages/typescript/src/attributes.ts
-#   packages/java/src/main/java/cl/culturetech/otel/CtAttributes.java
-#   packages/python/src/culturetech_otel/attributes.py
+# Salida generada por Weaver: EFÍMERA, se produce on-demand con `weaver registry generate`.
+# El repo de convenciones contiene SOLO el contrato Weaver; los paquetes generados NO se versionan.
+gen/

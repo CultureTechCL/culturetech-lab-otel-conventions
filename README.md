@@ -50,27 +50,16 @@ culturetech-lab-otel-conventions/
 │   ├── python/{attributes.py.j2, weaver.yaml}
 │   ├── java/{Attributes.java.j2, weaver.yaml}
 │   └── typescript/{attributes.ts.j2, weaver.yaml}
-├── scripts/generate.sh             # Regenera los 4 paquetes desde model/
-├── go.mod                          # Módulo Go raíz (se consume por tag, sin registry)
-├── otel/ctattributes/attributes.go # ← Go generado (paquete ctattributes)
-├── packages/                       # Paquetes publicables por lenguaje
-│   ├── typescript/                 #   npm @culturetechcl/lab-otel-conventions
-│   │   ├── package.json · tsconfig.json
-│   │   └── src/attributes.ts       #   ← TS generado
-│   ├── java/                       #   Maven cl.culturetech.otel:lab-otel-conventions
-│   │   ├── pom.xml
-│   │   └── src/main/java/cl/culturetech/otel/CtAttributes.java  # ← Java generado
-│   └── python/                     #   wheel culturetech-lab-otel-conventions
-│       ├── pyproject.toml · README.md
-│       └── src/culturetech_otel/{__init__.py, attributes.py}    # ← Python generado
-└── .github/
-    ├── actions/setup-weaver/       # Acción compuesta: instala Weaver en CI
-    └── workflows/{ci.yml, release.yml}
+├── .github/
+│   ├── actions/setup-weaver/       # Acción compuesta: instala Weaver en CI
+│   └── workflows/validate.yaml     # Gate en PR: solo `weaver registry check`
+└── gen/                            # Salida generada por Weaver (EFÍMERA, no versionada)
+    ├── go/ · python/ · java/ · typescript/   # se produce on-demand; ver más abajo
 ```
 
-> La **salida generada** (los archivos `attributes.*` / `CtAttributes.java`) se versiona
-> dentro de cada paquete para que sean consumibles directo del repo y revisables. Los
-> **artefactos de build** (`dist/`, `target/`, `*.whl`, `node_modules/`) NO se versionan.
+> El repo de convenciones contiene **SOLO el contrato Weaver**. La salida generada
+> (`gen/<lenguaje>/`) es **efímera**: se produce on-demand con `weaver registry generate` y
+> **no se versiona** (está en `.gitignore`). La raíz **no** es módulo de ningún lenguaje.
 
 > **Nota de ubicación del manifiesto.** A diferencia de un árbol donde el manifiesto
 > estaría en la raíz del repo, aquí `registry_manifest.yaml` vive **dentro de `model/`**.
@@ -110,69 +99,40 @@ ejecución descarga y cachea la dependencia OTel v1.40.0 en `~/.weaver/vdir_cach
 > El único warning esperado es el de renombrar `registry_manifest.yaml` a `manifest.yaml`
 > (cosmético; se conserva el nombre a propósito).
 
-### 2) Generar las constantes en cada paquete
+### 2) Generar las constantes (LOCAL, efímero)
 
 ```bash
-./scripts/generate.sh
+weaver registry generate --registry model/ --templates templates/ go         gen/go
+weaver registry generate --registry model/ --templates templates/ python     gen/python
+weaver registry generate --registry model/ --templates templates/ java       gen/java
+weaver registry generate --registry model/ --templates templates/ typescript gen/typescript
 ```
 
-Escribe la salida en las ubicaciones canónicas de cada paquete (`otel/ctattributes/`,
-`packages/*/src/...`). Es idempotente y marca cada archivo `DO NOT EDIT`.
+La salida va a `gen/<lenguaje>/` (**efímera, no versionada**). Cada archivo se marca `DO NOT EDIT`.
 
-### 3) Verificar que compila/importa
+### 3) Verificar que compila/importa (módulos efímeros dentro de `gen/`)
 
 ```bash
-go build ./...                                                   # Go (módulo raíz)
-( cd packages/typescript && npm install && npm run build )       # TypeScript
-( cd packages/java && mvn -q compile )                           # Java
-( cd packages/python && python -m build && pip install dist/*.whl ) # Python
+( cd gen/go && printf 'module ctattributes.local\n\ngo 1.21\n' > go.mod && go build ./... )   # Go
+python3 -c "import sys; sys.path.insert(0,'gen/python'); import attributes"                    # Python
+javac -d /tmp/ctjava gen/java/CtAttributes.java                                                # Java
+( cd gen/typescript && npx --yes typescript tsc --strict --noEmit attributes.ts )              # TypeScript
 ```
 
-> Los archivos generados se versionan; los artefactos de build (`dist/`, `target/`,
-> `*.whl`) no. La CI (`.github/workflows/ci.yml`) corre esto en cada push/PR e incluye
-> **detección de drift** (falla si la salida commiteada no coincide con el modelo).
+> La CI (`.github/workflows/validate.yaml`) corre **solo** `weaver registry check` en cada
+> push/PR. No genera código, no empaqueta y no publica.
 
 ---
 
-## Publicación y consumo
+## Estado y próximos pasos
 
-La publicación la dispara un **tag `vX.Y.Z`** (workflow `.github/workflows/release.yml`),
-que valida, publica y crea un GitHub Release con los artefactos adjuntos.
+**Hito 1a completo:** el registro valida en verde y genera los cuatro paquetes localmente en
+`gen/<lenguaje>/`.
 
-| Lenguaje | Destino | Coordenada | Consumo |
-|---|---|---|---|
-| **TypeScript** | GitHub Packages (npm) | `@culturetechcl/lab-otel-conventions` | `npm i @culturetechcl/lab-otel-conventions` (con `.npmrc` apuntando a `npm.pkg.github.com`) |
-| **Java** | GitHub Packages (Maven) | `cl.culturetech.otel:lab-otel-conventions` | dependencia Maven (repo `maven.pkg.github.com`) |
-| **Python** | Asset del GitHub Release (wheel) | `culturetech-lab-otel-conventions` | `pip install "git+https://github.com/CultureTechCL/culturetech-lab-otel-conventions.git@v0.1.0#subdirectory=packages/python"` |
-| **Go** | El tag mismo (sin registry) | `github.com/CultureTechCL/culturetech-lab-otel-conventions` | `go get github.com/CultureTechCL/culturetech-lab-otel-conventions@v0.1.0` |
-
-### Cómo consumir el contrato (ejemplo)
-
-Un servicio no re-declara los nombres: importa las constantes generadas.
-
-```typescript
-// TypeScript
-import { OrderAttributes, PaymentMethodValues } from "@culturetechcl/lab-otel-conventions";
-
-span.setAttribute(OrderAttributes.ORDER_ID, order.id);
-span.setAttribute("ct.payment.method", PaymentMethodValues.CREDIT_CARD);
-```
-
-```go
-// Go
-import ct "github.com/CultureTechCL/culturetech-lab-otel-conventions/otel/ctattributes"
-
-span.SetAttributes(attribute.String(ct.OrderId, order.ID))
-span.SetAttributes(attribute.String(ct.PaymentMethod, ct.PaymentMethodCreditCard))
-```
-
-```python
-# Python
-from culturetech_otel import OrderAttributes, PaymentAttributes
-
-span.set_attribute(OrderAttributes.ORDER_ID, order_id)
-span.set_attribute(PaymentAttributes.PAYMENT_METHOD, PaymentAttributes.PaymentMethodValues.CREDIT_CARD)
-```
+La **publicación (Fase 1b)** está **PENDIENTE de autorización humana**: todavía no hay
+empaquetado publicable ni CI de publicación en este repo. Cuando se autorice, la primera
+versión publicable legítima será **0.1.1** (la `0.1.0` se publicó por error, fue revertida, y
+sus paquetes se eliminaron de GitHub Packages).
 
 ---
 
@@ -245,6 +205,5 @@ es una **migración de organización de archivos**, no una reescritura.
 
 ## Licencia y estado
 
-Laboratorio interno de CultureTech. **Fase 1 + 1b** completas: el registro valida en verde,
-genera los cuatro paquetes, y cuenta con CI (gate de gobernanza) y publicación por tag
-(npm + Maven en GitHub Packages, wheel de Python en el Release, Go por tag).
+Laboratorio interno de CultureTech. **Hito 1a completo:** el registro valida en verde y genera
+los 4 paquetes localmente. **Fase 1b (publicación) PENDIENTE de autorización humana.**

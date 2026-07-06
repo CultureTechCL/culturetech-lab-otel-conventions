@@ -1,0 +1,22 @@
+name: validate
+
+# Gate de gobernanza del contrato: valida el registro y sus policies en cada PR.
+# No genera código, no empaqueta y no publica. Solo `weaver registry check`.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: weaver check (validación + policies)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-weaver
+      - name: Validar registro y policies
+        run: weaver registry check --registry model/ --policy policies/

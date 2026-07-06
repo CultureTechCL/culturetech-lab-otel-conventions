@@ -55,15 +55,16 @@ Weaver** (no contra supuestos). Estas decisiones difieren en detalles de un enun
 inicial y están documentadas a propósito:
 
 1. **Formato de modelo: v1 `groups:` (no `file_format: definition/2`).**
-   El formato v2 (`definition/2`) cambia el modelo de datos: los atributos se definen en
-   una lista `attributes:` de nivel superior con `key:`, y los `attribute_groups` pasan a
-   ser **solo colecciones de referencias**. Ese modelo es **incompatible** con el diseño
-   de este repo (grupos con `id: registry.ct.<dominio>` que **definen** atributos con
-   `id: ct.*`, sobre los que operan la policy y los templates). El formato v1 `groups:`
-   es el que usan OpenTelemetry semantic-conventions y el propio Weaver hoy, y es el que
-   hace funcionar la policy (`input.groups[_]`, `group.id`, `attr.name`) y los templates
-   (nombre de clase derivado del `id` del grupo). Migrar a v2 en el futuro es posible pero
-   implica reescribir modelo + policy + templates de forma coordinada.
+   Se usa el formato v1 `groups:` porque es la sintaxis ESTABLE y de PRODUCCIÓN de las
+   convenciones semánticas: es la que usan las OpenTelemetry semantic-conventions oficiales
+   y el propio Weaver hoy, y la que hace funcionar la policy (`input.groups[_]`, `group.id`,
+   `attr.name` en fase `after_resolution`) y los templates (nombre de clase derivado del
+   `id` del grupo).
+   El formato v2 (`file_format: definition/2`) está en estado **Alpha**, bajo desarrollo
+   activo, y reorganiza el modelo de datos por tipo de señal (atributos con `key:` y señales
+   que los referencian con `ref:`). Migrar a v2 será un trabajo DELIBERADO a futuro (modelo +
+   policy + templates de forma coordinada), no un conflicto del diseño actual. La conclusión
+   —quedarse en v1— es por madurez de la sintaxis, no porque el diseño esté "peleado" con v2.
 
 2. **`registry_manifest.yaml` vive dentro de `model/`.**
    Weaver escanea recursivamente TODO `*.yaml` bajo el directorio de `--registry` como
@@ -93,24 +94,26 @@ Requiere `weaver` (OpenTelemetry Weaver) ≥ 0.24.2 en el PATH.
 # Validar el registro + policies (debe salir en verde, exit 0)
 weaver registry check --registry model/ --policy policies/
 
-# Generar las constantes de los 4 lenguajes en sus paquetes (idempotente)
-./scripts/generate.sh
+# Generar las constantes de los 4 lenguajes a gen/<lenguaje>/ (efímero, no versionado)
+weaver registry generate --registry model/ --templates templates/ go         gen/go
+weaver registry generate --registry model/ --templates templates/ python     gen/python
+weaver registry generate --registry model/ --templates templates/ java       gen/java
+weaver registry generate --registry model/ --templates templates/ typescript gen/typescript
 ```
 
-## Empaquetado y publicación (Fase 1b)
+## Empaquetado y publicación (Fase 1b — PENDIENTE de autorización humana)
 
-- La salida generada vive en ubicaciones canónicas de paquete: `otel/ctattributes/`,
-  `packages/typescript/src/`, `packages/java/src/main/java/...`, `packages/python/src/...`.
-- **CI** (`.github/workflows/ci.yml`): en push/PR corre `weaver check`, regenera, verifica
-  compilación de los 4 y hace **detección de drift** (`git diff --exit-code` sobre la salida
-  generada). Runner GitHub-hosted `ubuntu-latest`.
-- **Release** (`.github/workflows/release.yml`): al empujar un tag `vX.Y.Z` publica
-  TS→npm y Java→Maven en **GitHub Packages**, Python (wheel) como asset del Release, y Go
-  queda publicado por el tag (`go get`). La publicación usa el `GITHUB_TOKEN` de Actions
-  (`permissions: packages: write`); no requiere secretos adicionales.
-- **Versionado:** las versiones en `package.json`/`pom.xml`/`pyproject.toml` deben coincidir
-  con el tag; el workflow valida la consistencia antes de publicar. Para una versión nueva:
-  bumpear los 3 manifiestos + `__init__.py` y empujar el tag correspondiente.
+> Estado: NO implementado. El repo está en Hito 1a (contrato validado + generación LOCAL a
+> `gen/<lenguaje>/`). Lo siguiente es un PLAN a ejecutar solo con autorización.
+
+- Los paquetes se generan on-demand a `gen/<lenguaje>/` (efímero, no versionado).
+- La Fase 1b definirá empaquetado y publicación (npm/Maven en GitHub Packages, wheel de
+  Python, Go por tag) mediante tooling a acordar.
+- Versionado: la primera versión publicable legítima será **0.1.1**. La `0.1.0` fue publicada
+  por error (Hito 1b no autorizado) y sus paquetes fueron eliminados de GitHub Packages; ese
+  número de versión no se reutiliza para contenido corregido, porque GitHub Packages no
+  permite republicar contenido distinto bajo un namespace+versión eliminado. No se intentará
+  restaurar la `0.1.0` borrada.
 
 ---
 
@@ -130,5 +133,6 @@ weaver registry check --registry model/ --policy policies/
 
 ## Fuera de alcance (no hacer sin autorización)
 
-- Migrar a `file_format: definition/2` (implica reescribir modelo + policy + templates).
+- Migrar a `file_format: definition/2`: fuera de alcance por MADUREZ (v2 en Alpha), no por
+  incompatibilidad. Será un trabajo deliberado y coordinado a futuro.
 - Cambiar los destinos de publicación o el esquema de versionado sin acuerdo.
