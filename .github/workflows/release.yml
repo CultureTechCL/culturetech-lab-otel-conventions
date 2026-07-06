@@ -257,35 +257,73 @@ jobs:
             gen/python/dist/*.whl gen/python/dist/*.tar.gz --clobber
 
   # ---------------------------------------------------------------------------
-  # Go -> verificación del módulo generado (go.mod ahora viene del template Go).
-  # NOTA sobre `go get` remoto: el consumo por tag
-  #   (go get .../gen/go@vX.Y.Z) requiere que `gen/go/` esté PRESENTE en el árbol
-  #   del repositorio en ese tag. Hoy `gen/` es efímero (gitignored), por lo que
-  #   este job valida que el módulo COMPILA (vet + build), pero no verifica el
-  #   fetch remoto por tag (no habría módulo commiteado que resolver). Habilitar
-  #   `go get` remoto exige versionar `gen/go/` en el tag — decisión de gobernanza
-  #   pendiente (ver CLAUDE.md § "Empaquetado y publicación").
+  # Go -> versionar `gen/go/` en el tag y verificar consumo remoto por `go get`.
+  #
+  # A diferencia de TS/Java/Python (registries externos), el módulo Go SE VERSIONA
+  # en el repo: Go resuelve módulos por tag de Git y exige que el código esté en el
+  # commit taggeado. `gen/go/` ya está rastreado (ver .gitignore) y commiteado en
+  # main; este job lo REGENERA y, SOLO si cambió, lo recommitea y mueve el tag.
+  #
+  # GUARD ANTI-LOOP (importante): mover el tag con force-push RE-DISPARA todo el
+  # workflow. Por eso el commit/re-tag/force-push ocurre ÚNICAMENTE cuando `gen/go/`
+  # difiere de lo ya versionado. En el caso normal (gen/go/ al día en main), no hay
+  # diff -> no hay push -> no hay re-disparo. Si `gen/go/` estaba desactualizado, la
+  # segunda ejecución (disparada por el force-push) ya encuentra gen/go/ al día ->
+  # no vuelve a pushear. (Ver reporte: riesgo residual de que los jobs npm/Maven se
+  # re-ejecuten y fallen por "versión ya publicada"; mitigarlo manteniendo `gen/go/`
+  # al día en main antes de taggear.)
   # ---------------------------------------------------------------------------
   publish-go:
-    name: publish-go (verificación)
+    name: publish-go (versionado + go get)
     runs-on: ubuntu-latest
     needs: validate
     permissions:
-      contents: read
+      contents: write
+      packages: read
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
       - uses: open-telemetry/weaver/.github/actions/setup-weaver@v0.24.1
         with:
           version: "0.24.1"
-      - name: Generar constantes Go + go.mod (desde templates/go/)
-        run: |
-          weaver registry generate --registry model/ --templates templates/ go gen/go
-          echo "go.mod generado por el template:" && cat gen/go/go.mod
-      - name: Verificar el módulo Go (vet + build)
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - name: Extraer versión del tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+      - name: Regenerar gen/go/
+        run: weaver registry generate --registry model/ --templates templates/ go gen/go
+      - name: Verificar module path en go.mod
+        run: grep -q "^module github.com/CultureTechCL/culturetech-lab-otel-conventions/gen/go$" gen/go/go.mod
+      - name: go mod tidy + compilación
         run: |
           cd gen/go
+          go mod tidy
           go vet ./...
           go build ./...
+      - name: Versionar gen/go/ en el tag (idempotente, anti-loop)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add gen/go/
+          if git diff --staged --quiet; then
+            echo "gen/go/ ya está al día en el tag; no se recommitea ni se re-taggea (evita re-disparo)."
+          else
+            git commit -m "chore: add generated Go module for ${GITHUB_REF_NAME}"
+            git tag -f "${GITHUB_REF_NAME}"
+            git push origin "${GITHUB_REF_NAME}" --force
+          fi
+      - name: Verificar consumo remoto (go get desde un módulo temporal)
+        env:
+          # GOPRIVATE evita el proxy y la checksum DB (problemáticos con tags que
+          # se reescriben): go va directo al repo por git.
+          GOPRIVATE: github.com/CultureTechCL/*
+        run: |
+          mkdir -p /tmp/go-verify && cd /tmp/go-verify
+          go mod init verify
+          go get "github.com/CultureTechCL/culturetech-lab-otel-conventions/gen/go@${GITHUB_REF_NAME}"
+          go mod tidy
+          echo "✅ go get remoto verificado para ${GITHUB_REF_NAME}"

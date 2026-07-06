@@ -140,23 +140,46 @@ en el repo (la raíz no es módulo de ningún lenguaje).
 | **TypeScript** | GitHub Packages (npm) | `@culturetechcl/lab-otel-conventions` |
 | **Java** | GitHub Packages (Maven) | `cl.culturetech.otel:lab-otel-conventions` |
 | **Python** | Asset del GitHub Release (wheel + sdist) | `culturetech-lab-otel-conventions` |
-| **Go** | Módulo generado (compila); `go get` remoto pendiente | `github.com/CultureTechCL/culturetech-lab-otel-conventions/gen/go` |
+| **Go** | Módulo versionado en el repo, consumido por tag | `github.com/CultureTechCL/culturetech-lab-otel-conventions/gen/go` |
 
-**Go — módulo generado (`go.mod` por template).** `templates/go/go.mod.j2` genera
-`gen/go/go.mod` con el **module path canónico**
-`github.com/CultureTechCL/culturetech-lab-otel-conventions/gen/go`, de modo que `gen/go/` es un
-módulo Go válido: el job `publish-go` verifica `go vet` **y** `go build` (compila). **Para
-habilitar el consumo remoto** `go get <module>@<tag>` (p. ej. desde `checkout-go` en Fase 3)
-falta UN requisito: `gen/go/` (con `go.mod` + `attributes.go`) debe estar **presente en el árbol
-del repositorio en ese tag**. Hoy `gen/` es efímero (gitignored), por lo que `go get` remoto
-todavía no resuelve, aunque el módulo ya es válido y compila. Versionar `gen/go/` en el tag es
-una **decisión de gobernanza pendiente** (contrapesa el principio anti-contaminación con la
-necesidad de consumo Go por tag); no se toma en este PR.
+Ver **§ "Módulo Go — excepción de versionado"** para el detalle del caso Go.
 
 **Versionado:** la primera versión publicable legítima es **0.1.1**. La `0.1.0` fue publicada
 por error (Hito 1b no autorizado), fue revertida y sus paquetes se eliminaron de GitHub
 Packages; ese número no se reutiliza (GitHub Packages no permite republicar bajo un
 namespace+versión eliminado). Para una versión nueva: empujar el tag `vX.Y.Z` correspondiente.
+
+## Módulo Go — excepción de versionado
+
+A diferencia de TypeScript (npm), Java (Maven) y Python (asset de release), el módulo Go **se
+versiona** en este repo. Razón: Go resuelve módulos por convención de tag de Git; el código
+debe estar presente en el commit taggeado para que `go get` funcione.
+
+**Module path canónico:**
+
+```
+github.com/CultureTechCL/culturetech-lab-otel-conventions/gen/go
+```
+
+**Consumo desde un servicio Go:**
+
+```bash
+go get github.com/CultureTechCL/culturetech-lab-otel-conventions/gen/go@v0.1.1
+```
+
+El directorio `gen/go/` está **rastreado por Git** (el `.gitignore` lo excluye explícitamente
+de la regla `gen/*` con `!gen/go/`). Los demás subdirectorios de `gen/` (`typescript/`, `java/`,
+`python/`) siguen **ignorados**, porque esos lenguajes se publican a registries externos.
+
+El workflow `release.yml` (job `publish-go`) **regenera** `gen/go/`, y **solo si cambió** lo
+recommitea y hace force-push del tag, antes de verificar el consumo remoto (`go get`). El
+guard "solo si cambió" evita re-disparar el workflow en bucle. Esto garantiza que el tag
+siempre apunte a un commit que incluye el módulo Go actualizado.
+
+> **Mantener `gen/go/` al día en `main`:** al cambiar el modelo, regenerar y commitear
+> `gen/go/` en `main` **antes** de taggear. Si el tag se corta desde un `main` con `gen/go/`
+> al día, `publish-go` no necesita mover el tag (no hay diff), y los jobs npm/Maven no se
+> re-ejecutan. (Ver nota de riesgo del force-push en el propio `release.yml`.)
 
 ---
 

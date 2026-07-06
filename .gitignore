@@ -8,6 +8,12 @@ vdir_cache/
 .idea/
 .vscode/
 
-# Salida generada por Weaver: EFÍMERA, se produce on-demand con `weaver registry generate`.
-# El repo de convenciones contiene SOLO el contrato Weaver; los paquetes generados NO se versionan.
-gen/
+# Salida generada por Weaver: EFÍMERA en general (TS/Java/Python se publican a
+# registries externos, no se versionan).
+#
+# EXCEPCIÓN DELIBERADA: `gen/go/` SÍ se versiona. Go resuelve módulos por tag de
+# Git y exige que el código esté presente en el commit taggeado para que `go get`
+# funcione. Por eso `gen/go/` queda rastreado y el resto de `gen/` ignorado.
+# Ver CLAUDE.md § "Módulo Go — excepción de versionado".
+gen/*
+!gen/go/
